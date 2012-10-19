@@ -28,6 +28,7 @@ import sys
 import time
 import zc.parse_addr
 import zc.zk
+from kazoo.exceptions import NoNodeError
 
 def worker(app, global_conf, zookeeper, path, loggers=None, address=':0',
            threads=None, backdoor=False, description=None, version=None,
@@ -220,12 +221,16 @@ def lbmain(args=None, run=True):
     if options.single_version or pool_factory != zc.resumelb.lb.Pool:
         @addrs
         def get_addrs(a):
-            to_send[0] = dict(
-                (zc.parse_addr.parse_addr(addr),
-                 zk.get_properties(
-                     worker_path + '/' + addr).get('version')
-                 )
-                for addr in addrs)
+            r = {}
+            for addr in addrs:
+                try:
+                    version = zk.get_properties(
+                            worker_path + '/' + addr).get('version')
+                except NoNodeError:
+                    # If nodes are shut down in quick succession we can get here
+                    continue
+                r[zc.parse_addr.parse_addr(addr)] = version
+            to_send[0] = r
             awatcher.send()
     else:
         @addrs

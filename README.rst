@@ -242,6 +242,14 @@ maintaining ZooKeeper trees.
 Change History
 ==============
 
+1.x.x (UNRELEASED)
+------------------
+
+- Fixed: A race condition when multiple workers are quickly shutdown
+  when used with ZooKeeper and single-version mode. An uncaught
+  NoNodeException was raised when the loadbalancer tried to get the
+  properties of a node already shut down.
+
 1.0.2 (2015-03-11)
 ------------------
 
