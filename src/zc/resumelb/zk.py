@@ -28,6 +28,7 @@ import sys
 import time
 import zc.parse_addr
 import zc.zk
+from zookeeper import NoNodeException
 
 def worker(app, global_conf, zookeeper, path, loggers=None, address=':0',
            threads=None, backdoor=False, description=None, version=None,
@@ -208,12 +209,16 @@ def lbmain(args=None, run=True):
     if options.single_version:
         @addrs
         def get_addrs(a):
-            to_send[0] = dict(
-                (zc.parse_addr.parse_addr(addr),
-                 zk.get_properties(
-                     path+'/workers/providers/'+addr).get('version')
-                 )
-                for addr in addrs)
+            r = {}
+            for addr in addrs:
+                try:
+                    version = zk.get_properties(
+                            path+'/workers/providers/'+addr).get('version')
+                except NoNodeException:
+                    # If nodes are shut down in quick succession we can get here
+                    continue
+                r[zc.parse_addr.parse_addr(addr)] = version
+            to_send[0] = r
             awatcher.send()
     else:
         @addrs
